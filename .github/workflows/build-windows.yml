@@ -1,0 +1,59 @@
+name: Build Windows Installer
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Type check (non-blocking)
+        run: pnpm run check
+        continue-on-error: true
+
+      - name: Build (electron-vite)
+        run: pnpm run build
+
+      - name: Stub code-signing script (no certificate in CI)
+        shell: pwsh
+        run: |
+          Set-Content -Path custom_win_sign.js -Value "module.exports = async () => {}"
+          Get-Content custom_win_sign.js
+
+      - name: Package Windows x64
+        run: npx electron-builder build --win --x64 --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          UPDATE_CHANNEL: alpha
+
+      - name: List output
+        shell: pwsh
+        run: Get-ChildItem -Recurse release/build | Select-Object FullName, Length
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: Chatbox-Windows-x64
+          path: release/build/*.exe
+          if-no-files-found: error
