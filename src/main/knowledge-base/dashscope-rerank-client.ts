@@ -43,9 +43,9 @@ export class DashScopeRerankClient {
   private readonly apiHost: string
   private readonly token: string
 
-  constructor(options: { apiHost: string; token: string }) {
-    this.apiHost = options.apiHost
-    this.token = options.token
+  constructor(options: { apiHost?: string; token?: string }) {
+    this.apiHost = options.apiHost ?? ''
+    this.token = options.token ?? ''
   }
 
   async rerank({ query, documents, model, topN }: RerankClientArgs): Promise<RerankClientResponse> {
